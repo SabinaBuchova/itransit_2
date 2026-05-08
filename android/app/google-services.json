@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "590884738429",
+    "project_id": "itransit-2-99b65",
+    "storage_bucket": "itransit-2-99b65.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:590884738429:android:e03dbc7b4ed48fcce6a814",
+        "android_client_info": {
+          "package_name": "com.example.itransit_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgvg9pJaZJZ80_yHfrWquah5IJOeOigJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
