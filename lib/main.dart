@@ -1,130 +1,345 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:itransit_2/data/models/stop_group.dart';
 import 'firebase_options.dart';
+
+import 'data/database/app_database.dart';
+import 'data/models/stop.dart';
+import 'package:itransit_2/data/api/golemio_api.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  await dotenv.load(fileName: ".env");
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await AppDatabase.deleteDatabaseFile();
+  await AppDatabase.database;
+  //await AppDatabase.clearStops();
+
+  await GolemioApi.importStops();
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false,
+      home: const MainScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainScreenState extends State<MainScreen> {
+  int selectedIndex = 0;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  final pages = [
+    const HomeScreen(),
+    const SearchScreen(),
+    const MapScreen(),
+    const NotificationsScreen(),
+    const ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: pages[selectedIndex],
+
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: selectedIndex,
+        onTap: (index) {
+          setState(() {
+            selectedIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: "Map"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: "Alerts",
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text("Home"));
+  }
+}
+
+class SearchScreen extends StatefulWidget {
+  const SearchScreen({super.key});
+
+  @override
+  State<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends State<SearchScreen> {
+  final fromController = TextEditingController();
+  final toController = TextEditingController();
+
+  List<StopGroup> fromResults = [];
+  List<StopGroup> toResults = [];
+
+  Stop? selectedFrom;
+  Stop? selectedTo;
+
+  int _fromSearchVersion = 0;
+  int _toSearchVersion = 0;
+
+  // ================= FROM SEARCH =================
+
+  void searchFrom(String query) async {
+    final searchVersion = ++_fromSearchVersion;
+
+    selectedFrom = null;
+
+    if (query.isEmpty) {
+      setState(() => fromResults = []);
+      return;
+    }
+
+    final results = await AppDatabase.searchStopsGrouped(query);
+
+    if (!mounted || searchVersion != _fromSearchVersion) return;
+
+    setState(() {
+      fromResults = results;
+    });
+  }
+
+  // ================= TO SEARCH =================
+
+  void searchTo(String query) async {
+    final searchVersion = ++_toSearchVersion;
+
+    selectedTo = null;
+
+    if (query.isEmpty) {
+      setState(() => toResults = []);
+      return;
+    }
+
+    final results = await AppDatabase.searchStopsGrouped(query);
+
+    if (!mounted || searchVersion != _toSearchVersion) return;
+
+    setState(() {
+      toResults = results;
+    });
+  }
+
+  // ================= SEARCH BUTTON =================
+
+  void searchRoute() {
+    print("FROM: ${selectedFrom?.stopName}");
+    print("TO: ${selectedTo?.stopName}");
+  }
+
+  // ================= UI =================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Search connection")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            // ======================================================
+            // FROM INPUT
+            // ======================================================
+            TextField(
+              controller: fromController,
+              onChanged: searchFrom,
+              decoration: const InputDecoration(
+                labelText: "From",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.trip_origin),
+              ),
+            ),
+
+            if (fromResults.isNotEmpty)
+              Container(
+                height: 250,
+                margin: const EdgeInsets.only(top: 5),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListView.builder(
+                  itemCount: fromResults.length,
+                  itemBuilder: (context, index) {
+                    final group = fromResults[index];
+                    final stop = group.stops.first;
+
+                    return ListTile(
+                      leading: const Icon(Icons.location_on),
+                      title: Text(group.name),
+                      subtitle: const Text("MHD Praha"),
+                      onTap: () {
+                        setState(() {
+                          selectedFrom = stop;
+                          fromController.text = group.name;
+                          fromController.selection = TextSelection.collapsed(
+                            offset: group.name.length,
+                          );
+                          fromResults = [];
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 12),
+
+            // ======================================================
+            // TO INPUT
+            // ======================================================
+            TextField(
+              controller: toController,
+              onChanged: searchTo,
+              decoration: const InputDecoration(
+                labelText: "To",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.location_on),
+              ),
+            ),
+
+            if (toResults.isNotEmpty)
+              Container(
+                height: 250,
+                margin: const EdgeInsets.only(top: 5),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListView.builder(
+                  itemCount: toResults.length,
+                  itemBuilder: (context, index) {
+                    final group = toResults[index];
+                    final stop = group.stops.first;
+
+                    return ListTile(
+                      leading: const Icon(Icons.location_on),
+                      title: Text(group.name),
+                      subtitle: const Text("MHD Praha"),
+                      onTap: () {
+                        setState(() {
+                          selectedTo = stop;
+                          toController.text = group.name;
+                          toController.selection = TextSelection.collapsed(
+                            offset: group.name.length,
+                          );
+                          toResults = [];
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ======================================================
+            // SEARCH BUTTON
+            // ======================================================
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: searchRoute,
+                child: const Text(
+                  "Search route",
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+class ResultsScreen extends StatelessWidget {
+  final String from;
+  final String to;
+  final List<String> results;
+
+  const ResultsScreen({
+    super.key,
+    required this.from,
+    required this.to,
+    required this.results,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("$from → $to")),
+      body: ListView.builder(
+        itemCount: results.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: const Icon(Icons.directions_bus),
+            title: Text(results[index]),
+          );
+        },
       ),
     );
+  }
+}
+
+class MapScreen extends StatelessWidget {
+  const MapScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text("Map"));
+  }
+}
+
+class NotificationsScreen extends StatelessWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text("Notifications"));
+  }
+}
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text("Profile"));
   }
 }

@@ -6,6 +6,7 @@
 *.swp
 .buildlog/
 .history
+.env
 
 
 
@@ -41,6 +42,7 @@ analysis_benchmark.json
 .pub-preload-cache/
 .pub/
 build/
+lib/firebase_options.dart
 flutter_*.png
 linked_*.ds
 unlinked.ds
