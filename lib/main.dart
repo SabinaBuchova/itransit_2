@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'data/database/app_database.dart';
 import 'data/models/stop.dart';
 import 'package:itransit_2/data/api/golemio_api.dart';
+import 'features/map/map_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -317,14 +318,6 @@ class ResultsScreen extends StatelessWidget {
   }
 }
 
-class MapScreen extends StatelessWidget {
-  const MapScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text("Map"));
-  }
-}
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});

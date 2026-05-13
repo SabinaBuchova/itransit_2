@@ -101,6 +101,29 @@ class AppDatabase {
     ).take(20).toList();
   }
 
+  static Future<List<Stop>> getAllStops() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT * FROM stops
+    WHERE lat BETWEEN 49.93 AND 50.18
+      AND lng BETWEEN 14.22 AND 14.72
+      AND stop_name NOT LIKE 'Praha-%'
+      AND stop_name NOT LIKE 'Praha %'
+      AND LOWER(stop_name) NOT LIKE '% km%'
+      AND LOWER(stop_name) NOT LIKE '%odb%'
+      AND LOWER(stop_name) NOT LIKE '%vyh%'
+      AND LOWER(stop_name) NOT LIKE '%vlecka%'
+      AND LOWER(stop_name) NOT LIKE '%naklad%'
+      AND LOWER(stop_name) NOT LIKE '%kolej%'
+      AND LOWER(stop_name) NOT LIKE '%depo%'
+      AND stop_name NOT GLOB '*[A-Z][0-9]*'
+      AND stop_name NOT GLOB '*[A-Z][0-9][0-9]*'
+  ''');
+
+    return result.map((e) => Stop.fromMap(e)).toList();
+  }
+
   static Future<List<StopGroup>> searchStopsGrouped(String query) async {
     final db = await database;
     final dbQuery = query.toLowerCase().trim();
