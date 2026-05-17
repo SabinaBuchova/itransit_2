@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:itransit_2/data/models/stop_group.dart';
 import 'firebase_options.dart';
 
+
+import 'data/models/stop_group.dart';
 import 'data/database/app_database.dart';
 import 'data/models/stop.dart';
-import 'package:itransit_2/data/api/golemio_api.dart';
+import 'data/api/golemio_api.dart';
 import 'features/map/map_screen.dart';
+import 'features/auth/auth_screen.dart';
+import 'features/auth/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +23,7 @@ void main() async {
   //await AppDatabase.deleteDatabaseFile();
   await AppDatabase.database;
   //await AppDatabase.clearStops();
+
 
   //await GolemioApi.importStops();
 
@@ -33,7 +37,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData) {
+            return const MainScreen();
+          }
+          return const AuthScreen();
+        },
+      ),
     );
   }
 }
@@ -60,24 +77,19 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: pages[selectedIndex],
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
+        onTap: (index) => setState(() => selectedIndex = index),
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: "Map"),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),
-            label: "Alerts",
+            label: 'Alerts',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -318,7 +330,6 @@ class ResultsScreen extends StatelessWidget {
   }
 }
 
-
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
@@ -328,11 +339,3 @@ class NotificationsScreen extends StatelessWidget {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text("Profile"));
-  }
-}

@@ -6,8 +6,14 @@
 *.swp
 .buildlog/
 .history
+
+# Environment
 .env
 
+# Firebase
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
 
 
 # Flutter repo-specific
@@ -28,6 +34,7 @@
 /packages/flutter/coverage/
 version
 analysis_benchmark.json
+android/app/src/main/res/values/strings.xml
 
 # packages file containing multi-root paths
 .packages.generated
@@ -42,7 +49,6 @@ analysis_benchmark.json
 .pub-preload-cache/
 .pub/
 build/
-lib/firebase_options.dart
 flutter_*.png
 linked_*.ds
 unlinked.ds
