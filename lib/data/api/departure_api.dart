@@ -33,8 +33,6 @@ class DepartureApi {
 
     final response = await http.get(url, headers: {'x-access-token': _apiKey!});
 
-    print('STATUS: ${response.statusCode}');
-    print('BODY: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception('Chyba pri načítaní odchodov: ${response.statusCode}');

@@ -23,9 +23,10 @@ class _MapScreenState extends State<MapScreen> {
   List<StopGroup> _searchResults = [];
   bool _loading = true;
   bool _isSearching = false;
+  double _currentZoom = _initialZoom;
 
   static const _initialCenter = LatLng(50.0755, 14.4378);
-  static const _initialZoom = 12.0;
+  static const _initialZoom = 13.0;
 
   @override
   void initState() {
@@ -98,6 +99,14 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+  List<Stop> get _visibleStops {
+    if (_currentZoom >= 15) return _stops; // všetky zastávky
+    if (_currentZoom >= 11) {
+      return _stops.where((s) => s.stopId.contains(RegExp(r'S\d+$'))).toList();
+    }
+    return []; // nič
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,11 +117,16 @@ class _MapScreenState extends State<MapScreen> {
                 // Mapa
                 FlutterMap(
                   mapController: _mapController,
-                  options: const MapOptions(
+                  options: MapOptions(
                     initialCenter: _initialCenter,
                     initialZoom: _initialZoom,
                     minZoom: 10,
                     maxZoom: 18,
+                    onPositionChanged: (position, _) {
+                      if (position.zoom != _currentZoom) {
+                        setState(() => _currentZoom = position.zoom);
+                      }
+                    },
                     // Klik na mapu zatvorí search
                     onTap: null,
                   ),
@@ -124,7 +138,7 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                     MarkerLayer(
                       markers: buildStopMarkers(
-                        stops: _stops,
+                        stops: _visibleStops,
                         onTap: (stop) {
                           // Obal Stop do dočasného StopGroup
                           _onGroupTapped(
@@ -210,7 +224,7 @@ class _MapScreenState extends State<MapScreen> {
                               shrinkWrap: true,
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               itemCount: _searchResults.length,
-                              separatorBuilder: (_, __) => Divider(
+                              separatorBuilder: (_, _) => Divider(
                                 color: Colors.grey.shade100,
                                 height: 1,
                                 indent: 16,

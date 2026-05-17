@@ -17,11 +17,11 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  await AppDatabase.deleteDatabaseFile();
+  //await AppDatabase.deleteDatabaseFile();
   await AppDatabase.database;
   //await AppDatabase.clearStops();
 
-  await GolemioApi.importStops();
+  //await GolemioApi.importStops();
 
   runApp(const MyApp());
 }
