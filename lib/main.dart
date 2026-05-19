@@ -8,10 +8,11 @@ import 'firebase_options.dart';
 import 'data/models/stop_group.dart';
 import 'data/database/app_database.dart';
 import 'data/models/stop.dart';
-import 'data/api/golemio_api.dart';
 import 'features/map/map_screen.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/profile_screen.dart';
+import 'features/home/home_screen.dart';
+import 'data/services/stop_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,14 +21,15 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  //await AppDatabase.deleteDatabaseFile();
-  await AppDatabase.database;
-  //await AppDatabase.clearStops();
+  try {
+    await StopSyncService.syncIfNeeded();
+  } catch (e) {
+    print('Sync zlyhal: $e');
+  }
 
 
-  //await GolemioApi.importStops();
 
-  runApp(const MyApp());
+  runApp(const MyApp());  
 }
 
 class MyApp extends StatelessWidget {
@@ -96,14 +98,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text("Home"));
-  }
-}
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});

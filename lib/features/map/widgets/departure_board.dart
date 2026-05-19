@@ -2,6 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../data/api/departure_api.dart';
 import '../../../data/models/departure.dart';
+import '../../../data/services/favourite_service.dart';
+import '../../../data/models/favourite_stop.dart';
+import '../../../features/auth/auth_service.dart';
+import '../../../features/auth/login_prompt.dart';
 
 class DepartureBoard extends StatefulWidget {
   final String stopId;
@@ -22,12 +26,36 @@ class _DepartureBoardState extends State<DepartureBoard> {
   bool _loading = true;
   String? _error;
   Timer? _timer;
+  bool _isFavourite = false;
 
   @override
   void initState() {
     super.initState();
     _fetch();
+    _checkFavourite();
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => _fetch());
+  }
+
+  Future<void> _checkFavourite() async {
+    final result = await FavouritesService.isFavourite(widget.stopId);
+    if (mounted) setState(() => _isFavourite = result);
+  }
+
+  Future<void> _toggleFavourite() async {
+    if (AuthService.isAnonymous) {
+      LoginPrompt.show(context);
+      return;
+    }
+
+    if (_isFavourite) {
+      await FavouritesService.remove(widget.stopId);
+    } else {
+      await FavouritesService.add(
+        FavouriteStop(stopId: widget.stopId, stopName: widget.stopName),
+      );
+    }
+
+    setState(() => _isFavourite = !_isFavourite);
   }
 
   @override
@@ -97,6 +125,16 @@ class _DepartureBoardState extends State<DepartureBoard> {
                     ),
                   ),
                 ),
+                // Srdce
+                IconButton(
+                  onPressed: _toggleFavourite,
+                  icon: Icon(
+                    _isFavourite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: _isFavourite ? Colors.red : Colors.grey,
+                  ),
+                ),
                 _LiveIndicator(),
               ],
             ),
@@ -133,8 +171,7 @@ class _DepartureBoardState extends State<DepartureBoard> {
                 children: [
                   Icon(Icons.wifi_off_rounded, color: Colors.grey.shade400),
                   const SizedBox(width: 8),
-                  Text(_error!,
-                      style: TextStyle(color: Colors.grey.shade500)),
+                  Text(_error!, style: TextStyle(color: Colors.grey.shade500)),
                 ],
               ),
             )
@@ -154,8 +191,7 @@ class _DepartureBoardState extends State<DepartureBoard> {
               itemCount: _departures.length,
               separatorBuilder: (_, __) =>
                   Divider(color: Colors.grey.shade100, height: 1),
-              itemBuilder: (_, i) =>
-                  _DepartureRow(departure: _departures[i]),
+              itemBuilder: (_, i) => _DepartureRow(departure: _departures[i]),
             ),
         ],
       ),
